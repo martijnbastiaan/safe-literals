@@ -38,10 +38,10 @@ library
 # How it works
 Every positive literal is rewritten as `safePositiveIntegerLiteral @lit lit` and every
 negative literal is rewritten as `safeNegativeIntegerLiteral @lit (-lit)`. The `safe`
-functions themselves act as `id`, but insert a `SafePositiveIntegerLiteral lit a` constraint
-where `a` is the type of the literal (possibly polymorphic). Every instance of this class
-should insert a constraint that's checkable by the type checkers. For example, an instance
-of `Word8` might look like:
+functions themselves act as `id`, but insert a `Safe{Positive,Negative}IntegerLiteral lit a`
+constraint where `a` is the type of the literal (possibly polymorphic). Every instance of
+this class should insert a constraint that's checkable by the type checkers. For example,
+an instance of `Word8` might look like:
 
 ```haskell
 instance (lit <= 255) => SafePositiveIntegerLiteral lit Word8
