@@ -47,7 +47,10 @@ library
     template-haskell,
 
   hs-source-dirs: src
-  default-language: GHC2024
+  default-language: GHC2021
+  default-extensions:
+    DataKinds
+    TypeOperators
 
 test-suite unittests
   import: warnings, typechecker-plugins, sane-records
@@ -58,6 +61,10 @@ test-suite unittests
     Tests.Word
     Tests.Unsigned
     Test.Tasty.ShouldError
+
+  default-extensions:
+    DataKinds
+    TypeOperators
 
   build-depends:
     base,
@@ -71,5 +78,5 @@ test-suite unittests
     temporary,
 
   hs-source-dirs: tests
-  default-language: GHC2024
+  default-language: GHC2021
   ghc-options: -fplugin=SafeLiterals -Wno-overflowed-literals

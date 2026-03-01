@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE ViewPatterns #-}
 
 module SafeLiterals.Plugin (plugin) where
@@ -99,7 +100,11 @@ isSafeLiteralApp expr = case expr of
   -- Direct reference to safe literal function
   HsVar _ (L _ rdrName) -> isSafeLiteralName rdrName
   -- Type application to safe literal function, e.g.: safePositiveIntegerLiteral @N
+#if MIN_VERSION_ghc(9,10,0)
   HsAppType _ funExpr _ -> isSafeLiteralApp (unLoc funExpr)
+#else
+  HsAppType _ funExpr _ _ -> isSafeLiteralApp (unLoc funExpr)
+#endif
   _ -> False
 
 -- | Check if a name is one of our safe literal functions or uncheckedLiteral
@@ -120,6 +125,13 @@ makeSafeLiteral funcName expr value = fullApp
   funcRdrName = mkRdrUnqual (mkVarOcc funcName)
   funcVar = noLocA (HsVar noExtField (noLocA funcRdrName))
   tyLit = HsNumTy NoSourceText (abs value)
+#if MIN_VERSION_ghc(9,10,0)
   typeArg = HsWC noExtField (noLocA (HsTyLit noExtField tyLit))
   withTypeApp = HsAppType noAnn funcVar typeArg
   fullApp = HsApp noExtField (noLocA withTypeApp) (noLocA expr)
+#else
+  typeArg = HsWC noExtField (noLocA (HsTyLit noExtField tyLit))
+  atToken = L NoTokenLoc (HsTok @"@")
+  withTypeApp = HsAppType noExtField funcVar atToken typeArg
+  fullApp = HsApp noAnn (noLocA withTypeApp) (noLocA expr)
+#endif
