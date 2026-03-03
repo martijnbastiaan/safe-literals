@@ -133,7 +133,7 @@ testWord255 = 255
 testWordMax :: Word
 testWordMax = 18446744073709551615
 
-testWord8_0 :: Word8
+testWord8_0 ::     Word8
 testWord8_0 = 0
 
 testWord8_255 :: Word8
