@@ -32,7 +32,7 @@ common sane-records
     OverloadedRecordDot
 
 library
-  import: warnings, sane-records
+  import: warnings, typechecker-plugins, sane-records
   exposed-modules:
     SafeLiterals
     SafeLiterals.Class
@@ -59,6 +59,7 @@ test-suite unittests
   other-modules:
     Test.Tasty.ShouldError
     Tests
+    Tests.Rational
     Tests.Unsigned
     Tests.Word
 

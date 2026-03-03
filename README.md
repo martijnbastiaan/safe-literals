@@ -36,8 +36,10 @@ library
 
 
 # How it works
-Every positive literal is rewritten as `safePositiveIntegerLiteral @lit lit` and every
-negative literal is rewritten as `safeNegativeIntegerLiteral @lit (-lit)`. The `safe`
+
+## Integer Literals
+Every positive integer literal is rewritten as `safePositiveIntegerLiteral @lit lit` and every
+negative integer literal is rewritten as `safeNegativeIntegerLiteral @lit (-lit)`. The `safe`
 functions themselves act as `id`, but insert a `Safe{Positive,Negative}IntegerLiteral lit a`
 constraint where `a` is the type of the literal (possibly polymorphic). Every instance of
 this class should insert a constraint that's checkable by the type checkers. For example,
@@ -46,6 +48,16 @@ an instance of `Word8` might look like:
 ```haskell
 instance (lit <= 255) => SafePositiveIntegerLiteral lit Word8
 ```
+
+## Rational Literals
+Rational literals (e.g., `3.14`) are rewritten as `safePositiveRationalLiteral @num @den lit`
+where `num` and `den` are the numerator and denominator. Since GHC lacks type-level rationals,
+we represent them as two type-level naturals. The plugin ensures:
+
+- For `Float`/`Double`: all rational literals are accepted (but may lose precision)
+- For integer types (`Int`, `Word8`, etc.): only integer-valued rationals are accepted (e.g., `2.0` works, `2.5` doesn't)
+- For `Ratio a`: the numerator and denominator must fit in type `a`
+- For fixed-point types: checks both range and precision (denominator must divide a power of 2)
 
 In practice, these instances are a bit more complicated in order to have nice error type
 errors.
@@ -168,9 +180,38 @@ term level literals.
 Because there is no `TypeWarning` :-).
 
 ## What about `Float`/`Double`?
-Some integers less than the maximum aren't representable. This would make the plugin accept
-literals that get changed "at run time". This might be fine, but can also be unexpected. As
-a result, I explicitly don't support them.
+`Float` and `Double` are now fully supported for rational literals (e.g., `3.14`). Note that:
+
+- Integer literals (e.g., `42`) will still error for `Float`/`Double` - use rational notation (e.g., `42.0`) instead
+- Rational literals may lose precision due to the limitations of floating-point representation
+- The plugin will accept any rational literal for these types; precision loss is expected and not reported
 
 ## What about rational literals (e.g., `3.1415`)?
-It's not clear to me how to do this, given that there are no type level rationals.
+Rational literals are now fully supported! The plugin represents them using two type-level
+naturals (numerator and denominator) since GHC lacks type-level rationals.
+
+### Examples
+
+```haskell
+-- Float/Double: always accepted, may lose precision
+x :: Double
+x = 3.14159  -- ✓
+
+-- Ratio: numerator and denominator must fit in the underlying type
+y :: Ratio Integer
+y = 22.7  -- ✓ (treated as 227 % 10)
+
+-- Integer types: must be integer-valued
+z :: Word8
+z = 42.0  -- ✓
+w :: Word8
+w = 2.5   -- ✗ Error: "is not an integer"
+
+-- Fixed-point types: checks range and exact representability
+data UFixed (i :: Nat) (f :: Nat)  -- i integer bits, f fractional bits
+
+v :: UFixed 8 8
+v = 0.5   -- ✓ (0.5 = 1/2, representable with 8 fractional bits)
+u :: UFixed 8 8
+u = 0.333 -- ✗ Error: "cannot be represented exactly" (1/3 needs infinite bits)
+```

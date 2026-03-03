@@ -1,5 +1,6 @@
 {-# LANGUAGE AllowAmbiguousTypes #-}
 {-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE UndecidableInstances #-}
 
 module SafeLiterals.Class where
@@ -15,10 +16,14 @@ import Data.Ratio (Ratio)
 import Data.Semigroup (Max, Min)
 import Data.Word (Word16, Word32, Word64, Word8)
 import GHC.TypeError (Assert, ErrorMessage (ShowType, Text, (:$$:), (:<>:)), TypeError)
-import GHC.TypeNats (Nat, type (<=?))
+import GHC.TypeNats (Div, Log2, Nat, (*), type (<=?), type (^), type Mod)
 import Numeric.Natural (Natural)
 
 import SafeLiterals.Class.TemplateHaskell (maxBoundAsNat, minBoundAsNat)
+
+--------------------------------------------------------------------------------
+-- Integer Literal Support
+--------------------------------------------------------------------------------
 
 type PositiveUnsignedError lit typ maxVal =
   TypeError
@@ -244,3 +249,297 @@ instance (SafeNegativeIntegerLiteral lit a) => SafeNegativeIntegerLiteral lit (A
 
 safeNegativeIntegerLiteral :: (SafeNegativeIntegerLiteral lit a) => a -> a
 safeNegativeIntegerLiteral = id
+
+--------------------------------------------------------------------------------
+-- Rational Literal Support
+--------------------------------------------------------------------------------
+
+-- | Error message for positive rational literal out of bounds
+type PositiveRationalError num den typ =
+  TypeError
+    ( 'Text "Rational literal "
+        ':<>: 'ShowType num
+        ':<>: 'Text " / "
+        ':<>: 'ShowType den
+        ':<>: 'Text " is out of bounds for "
+        ':<>: 'ShowType typ
+        ':<>: 'Text "."
+        ':$$: 'Text "Possible fix: use 'uncheckedLiteral' from 'SafeLiterals' to bypass this check."
+    )
+
+-- | Error message for negative rational literal out of bounds
+type NegativeRationalError num den typ =
+  TypeError
+    ( 'Text "Negative rational literal -"
+        ':<>: 'ShowType num
+        ':<>: 'Text " / "
+        ':<>: 'ShowType den
+        ':<>: 'Text " is out of bounds for "
+        ':<>: 'ShowType typ
+        ':<>: 'Text "."
+        ':$$: 'Text "Possible fix: use 'uncheckedLiteral' from 'SafeLiterals' to bypass this check."
+    )
+
+-- | Type class for safe positive rational literals
+class SafePositiveRationalLiteral (num :: Nat) (den :: Nat) (a :: Type)
+
+-- | Type class for safe negative rational literals
+class SafeNegativeRationalLiteral (num :: Nat) (den :: Nat) (a :: Type)
+
+-- Float and Double instances (always succeed but may lose precision)
+instance SafePositiveRationalLiteral num den Float
+instance SafePositiveRationalLiteral num den Double
+instance SafeNegativeRationalLiteral num den Float
+instance SafeNegativeRationalLiteral num den Double
+
+-- Integer types: require that the rational is actually an integer (den divides num)
+-- and that the resulting integer fits in bounds
+
+type IntegerFromRational num den = num `Div` den
+
+type RationalMustBeInteger num den typ =
+  TypeError
+    ( 'Text "Rational literal "
+        ':<>: 'ShowType num
+        ':<>: 'Text " / "
+        ':<>: 'ShowType den
+        ':<>: 'Text " is not an integer."
+        ':$$: 'ShowType typ
+          ':<>: 'Text " requires an integer value."
+        ':$$: 'Text "Possible fix: use 'uncheckedLiteral' from 'SafeLiterals' to bypass this check."
+    )
+
+type family IsInteger (num :: Nat) (den :: Nat) :: Bool where
+  IsInteger num den = ((num `Mod` den) <=? 0)
+
+-- Natural
+instance
+  ( Assert (IsInteger num den) (RationalMustBeInteger num den Natural)
+  , SafePositiveIntegerLiteral (IntegerFromRational num den) Natural
+  ) =>
+  SafePositiveRationalLiteral num den Natural
+
+instance
+  ( Assert (IsInteger num den) (RationalMustBeInteger num den Natural)
+  , SafeNegativeIntegerLiteral (IntegerFromRational num den) Natural
+  ) =>
+  SafeNegativeRationalLiteral num den Natural
+
+-- Integer
+instance
+  ( Assert (IsInteger num den) (RationalMustBeInteger num den Integer)
+  , SafePositiveIntegerLiteral (IntegerFromRational num den) Integer
+  ) =>
+  SafePositiveRationalLiteral num den Integer
+
+instance
+  ( Assert (IsInteger num den) (RationalMustBeInteger num den Integer)
+  , SafeNegativeIntegerLiteral (IntegerFromRational num den) Integer
+  ) =>
+  SafeNegativeRationalLiteral num den Integer
+
+-- Word types
+instance
+  ( Assert (IsInteger num den) (RationalMustBeInteger num den Word)
+  , SafePositiveIntegerLiteral (IntegerFromRational num den) Word
+  ) =>
+  SafePositiveRationalLiteral num den Word
+
+instance
+  ( Assert (IsInteger num den) (RationalMustBeInteger num den Word)
+  , SafeNegativeIntegerLiteral (IntegerFromRational num den) Word
+  ) =>
+  SafeNegativeRationalLiteral num den Word
+
+instance
+  ( Assert (IsInteger num den) (RationalMustBeInteger num den Word8)
+  , SafePositiveIntegerLiteral (IntegerFromRational num den) Word8
+  ) =>
+  SafePositiveRationalLiteral num den Word8
+
+instance
+  ( Assert (IsInteger num den) (RationalMustBeInteger num den Word8)
+  , SafeNegativeIntegerLiteral (IntegerFromRational num den) Word8
+  ) =>
+  SafeNegativeRationalLiteral num den Word8
+
+instance
+  ( Assert (IsInteger num den) (RationalMustBeInteger num den Word16)
+  , SafePositiveIntegerLiteral (IntegerFromRational num den) Word16
+  ) =>
+  SafePositiveRationalLiteral num den Word16
+
+instance
+  ( Assert (IsInteger num den) (RationalMustBeInteger num den Word16)
+  , SafeNegativeIntegerLiteral (IntegerFromRational num den) Word16
+  ) =>
+  SafeNegativeRationalLiteral num den Word16
+
+instance
+  ( Assert (IsInteger num den) (RationalMustBeInteger num den Word32)
+  , SafePositiveIntegerLiteral (IntegerFromRational num den) Word32
+  ) =>
+  SafePositiveRationalLiteral num den Word32
+
+instance
+  ( Assert (IsInteger num den) (RationalMustBeInteger num den Word32)
+  , SafeNegativeIntegerLiteral (IntegerFromRational num den) Word32
+  ) =>
+  SafeNegativeRationalLiteral num den Word32
+
+instance
+  ( Assert (IsInteger num den) (RationalMustBeInteger num den Word64)
+  , SafePositiveIntegerLiteral (IntegerFromRational num den) Word64
+  ) =>
+  SafePositiveRationalLiteral num den Word64
+
+instance
+  ( Assert (IsInteger num den) (RationalMustBeInteger num den Word64)
+  , SafeNegativeIntegerLiteral (IntegerFromRational num den) Word64
+  ) =>
+  SafeNegativeRationalLiteral num den Word64
+
+-- Int types
+instance
+  ( Assert (IsInteger num den) (RationalMustBeInteger num den Int)
+  , SafePositiveIntegerLiteral (IntegerFromRational num den) Int
+  ) =>
+  SafePositiveRationalLiteral num den Int
+
+instance
+  ( Assert (IsInteger num den) (RationalMustBeInteger num den Int)
+  , SafeNegativeIntegerLiteral (IntegerFromRational num den) Int
+  ) =>
+  SafeNegativeRationalLiteral num den Int
+
+instance
+  ( Assert (IsInteger num den) (RationalMustBeInteger num den Int8)
+  , SafePositiveIntegerLiteral (IntegerFromRational num den) Int8
+  ) =>
+  SafePositiveRationalLiteral num den Int8
+
+instance
+  ( Assert (IsInteger num den) (RationalMustBeInteger num den Int8)
+  , SafeNegativeIntegerLiteral (IntegerFromRational num den) Int8
+  ) =>
+  SafeNegativeRationalLiteral num den Int8
+
+instance
+  ( Assert (IsInteger num den) (RationalMustBeInteger num den Int16)
+  , SafePositiveIntegerLiteral (IntegerFromRational num den) Int16
+  ) =>
+  SafePositiveRationalLiteral num den Int16
+
+instance
+  ( Assert (IsInteger num den) (RationalMustBeInteger num den Int16)
+  , SafeNegativeIntegerLiteral (IntegerFromRational num den) Int16
+  ) =>
+  SafeNegativeRationalLiteral num den Int16
+
+instance
+  ( Assert (IsInteger num den) (RationalMustBeInteger num den Int32)
+  , SafePositiveIntegerLiteral (IntegerFromRational num den) Int32
+  ) =>
+  SafePositiveRationalLiteral num den Int32
+
+instance
+  ( Assert (IsInteger num den) (RationalMustBeInteger num den Int32)
+  , SafeNegativeIntegerLiteral (IntegerFromRational num den) Int32
+  ) =>
+  SafeNegativeRationalLiteral num den Int32
+
+instance
+  ( Assert (IsInteger num den) (RationalMustBeInteger num den Int64)
+  , SafePositiveIntegerLiteral (IntegerFromRational num den) Int64
+  ) =>
+  SafePositiveRationalLiteral num den Int64
+
+instance
+  ( Assert (IsInteger num den) (RationalMustBeInteger num den Int64)
+  , SafeNegativeIntegerLiteral (IntegerFromRational num den) Int64
+  ) =>
+  SafeNegativeRationalLiteral num den Int64
+
+-- Ratio instances - delegate to the underlying integer type
+instance (SafePositiveIntegerLiteral num a, SafePositiveIntegerLiteral den a) => SafePositiveRationalLiteral num den (Ratio a)
+instance (SafePositiveIntegerLiteral num a, SafePositiveIntegerLiteral den a) => SafeNegativeRationalLiteral num den (Ratio a)
+
+-- Wrapper instances
+instance (SafePositiveRationalLiteral num den a) => SafePositiveRationalLiteral num den (Complex a)
+instance (SafeNegativeRationalLiteral num den a) => SafeNegativeRationalLiteral num den (Complex a)
+
+instance (SafePositiveRationalLiteral num den a) => SafePositiveRationalLiteral num den (Max a)
+instance (SafeNegativeRationalLiteral num den a) => SafeNegativeRationalLiteral num den (Max a)
+
+instance (SafePositiveRationalLiteral num den a) => SafePositiveRationalLiteral num den (Min a)
+instance (SafeNegativeRationalLiteral num den a) => SafeNegativeRationalLiteral num den (Min a)
+
+instance (SafePositiveRationalLiteral num den a) => SafePositiveRationalLiteral num den (Identity a)
+instance (SafeNegativeRationalLiteral num den a) => SafeNegativeRationalLiteral num den (Identity a)
+
+instance (SafePositiveRationalLiteral num den a) => SafePositiveRationalLiteral num den (Down a)
+instance (SafeNegativeRationalLiteral num den a) => SafeNegativeRationalLiteral num den (Down a)
+
+instance (SafePositiveRationalLiteral num den a) => SafePositiveRationalLiteral num den (Product a)
+instance (SafeNegativeRationalLiteral num den a) => SafeNegativeRationalLiteral num den (Product a)
+
+instance (SafePositiveRationalLiteral num den a) => SafePositiveRationalLiteral num den (Sum a)
+instance (SafeNegativeRationalLiteral num den a) => SafeNegativeRationalLiteral num den (Sum a)
+
+instance (SafePositiveRationalLiteral num den a) => SafePositiveRationalLiteral num den (Const a b)
+instance (SafeNegativeRationalLiteral num den a) => SafeNegativeRationalLiteral num den (Const a b)
+
+instance (SafePositiveRationalLiteral num den a) => SafePositiveRationalLiteral num den (Ap f a)
+instance (SafeNegativeRationalLiteral num den a) => SafeNegativeRationalLiteral num den (Ap f a)
+
+safePositiveRationalLiteral :: (SafePositiveRationalLiteral num den a) => a -> a
+safePositiveRationalLiteral = id
+
+safeNegativeRationalLiteral :: (SafeNegativeRationalLiteral num den a) => a -> a
+safeNegativeRationalLiteral = id
+
+--------------------------------------------------------------------------------
+-- Fixed Point Rational Literal Support
+--------------------------------------------------------------------------------
+
+-- | Check if (num * 2^F) mod den == 0, meaning the rational can be represented exactly
+type family CanRepresentExactly (num :: Nat) (den :: Nat) (f :: Nat) :: Bool where
+  CanRepresentExactly num den f = ((num * (2 ^ f)) `Mod` den) <=? 0
+
+-- | Error for rational that cannot be represented exactly in fixed-point
+type FixedPrecisionError num den f typ =
+  TypeError
+    ( 'Text "Rational literal "
+        ':<>: 'ShowType num
+        ':<>: 'Text " / "
+        ':<>: 'ShowType den
+        ':<>: 'Text " cannot be represented exactly in "
+        ':<>: 'ShowType typ
+        ':<>: 'Text "."
+        ':$$: 'Text "The denominator "
+          ':<>: 'ShowType den
+          ':<>: 'Text " is not a divisor of 2^"
+          ':<>: 'ShowType f
+          ':<>: 'Text "."
+        ':$$: 'Text "Possible fix: increase the fractional bits or use 'uncheckedLiteral'."
+    )
+
+-- | Error for rational that is too large for the integer bits
+type FixedRangeError num den i typ =
+  TypeError
+    ( 'Text "Rational literal "
+        ':<>: 'ShowType num
+        ':<>: 'Text " / "
+        ':<>: 'ShowType den
+        ':<>: 'Text " is too large for "
+        ':<>: 'ShowType typ
+        ':<>: 'Text "."
+        ':$$: 'Text "The integer part requires more than "
+          ':<>: 'ShowType i
+          ':<>: 'Text " bits."
+        ':$$: 'Text "Possible fix: increase the integer bits or use 'uncheckedLiteral'."
+    )
+
+-- | Check if num/den < 2^i (for positive values)
+type family RationalFitsInIntegerBits (num :: Nat) (den :: Nat) (i :: Nat) :: Bool where
+  RationalFitsInIntegerBits num den i = num <=? ((den * (2 ^ i)))

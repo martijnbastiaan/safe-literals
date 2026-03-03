@@ -8,8 +8,9 @@ import Prelude
 
 import Control.Monad.State (State, put, runState)
 import Data.Generics (Data, extM, gmapM)
+import Data.Ratio (denominator, numerator, (%))
 import GHC.Plugins hiding ((<>))
-import GHC.Types.SourceText (SourceText (NoSourceText), il_value)
+import GHC.Types.SourceText (FractionalExponentBase (..), FractionalLit (..), SourceText (NoSourceText), il_value)
 
 -- | Type alias for transformation state: tracks whether any changes occurred
 type TransformM = State Bool
@@ -73,7 +74,32 @@ transformLHsExpr lexpr@(L loc expr) = case expr of
   -- Check if this is an application to our safe literal functions. If so, stop recursing
   -- to avoid double transformation.
   HsApp _ fun _ | isSafeLiteralApp (unLoc fun) -> return lexpr
-  -- Handle negation: detect (negate literal) patterns
+
+  -- Handle negation of fractional literals: detect (negate 3.14) patterns
+  NegApp _ (L _ (HsOverLit _ OverLit{ol_val = HsFractional fracLit})) _ -> do
+    put True -- Mark that we performed a change
+    let
+      -- Retrieve fields from FractionalLit
+      -- In GHC 9.14, FractionalLit has: fl_signi, fl_exp, fl_exp_base
+      FL{fl_signi, fl_exp, fl_exp_base} = fracLit
+      -- Convert to Rational based on exponent base
+      baseVal :: Integer
+      baseVal = case fl_exp_base of
+        Base2 -> 2
+        Base10 -> 10
+      -- Compute the rational: fl_signi * baseVal^fl_exp
+      powerVal :: Integer
+      powerVal = baseVal ^ fl_exp
+      ratValue :: Rational
+      ratValue = toRational fl_signi * toRational powerVal
+      num :: Integer
+      num = abs (numerator ratValue)
+      den :: Integer
+      den = denominator ratValue
+      transformedExpr = makeSafeRationalLiteral "safeNegativeRationalLiteral" expr num den
+    return (L loc transformedExpr)
+
+  -- Handle negation of integer literals: detect (negate literal) patterns
   NegApp _ (L _ (HsOverLit _ OverLit{ol_val = HsIntegral intLit})) _ -> do
     put True -- Mark that we performed a change
     let
@@ -81,7 +107,28 @@ transformLHsExpr lexpr@(L loc expr) = case expr of
       transformedExpr = makeSafeLiteral "safeNegativeIntegerLiteral" expr value
     return (L loc transformedExpr)
 
-  -- Transform positive numeric literals
+  -- Transform positive fractional literals
+  HsOverLit _ OverLit{ol_val = HsFractional fracLit} -> do
+    put True -- Mark that we performed a change
+    let
+      FL{fl_signi, fl_exp, fl_exp_base} = fracLit
+      baseVal :: Integer
+      baseVal = case fl_exp_base of
+        Base2 -> 2
+        Base10 -> 10
+      powerVal :: Integer
+      powerVal = baseVal ^ fl_exp
+      ratValue :: Rational
+      ratValue = toRational fl_signi * toRational powerVal
+      num :: Integer
+      num = numerator ratValue
+      den :: Integer
+      den = denominator ratValue
+    if num >= 0
+      then return $ L loc $ makeSafeRationalLiteral "safePositiveRationalLiteral" expr num den
+      else return $ L loc $ makeSafeRationalLiteral "safeNegativeRationalLiteral" expr (abs num) den
+
+  -- Transform positive integer literals
   HsOverLit _ OverLit{ol_val = HsIntegral intLit} -> do
     put True -- Mark that we performed a change
     let value = il_value intLit
@@ -114,6 +161,8 @@ isSafeLiteralName rdrName =
     Unqual (occNameString -> name) ->
       name == "safePositiveIntegerLiteral"
         || name == "safeNegativeIntegerLiteral"
+        || name == "safePositiveRationalLiteral"
+        || name == "safeNegativeRationalLiteral"
         || name == "uncheckedLiteral"
     _ -> False
 
@@ -133,4 +182,27 @@ makeSafeLiteral funcName expr value = fullApp
   atToken = L NoTokenLoc (HsTok @"@")
   withTypeApp = HsAppType noExtField funcVar atToken typeArg
   fullApp = HsApp noAnn (noLocA withTypeApp) (noLocA expr)
+#endif
+
+-- | Build the expression for rational literals, e.g.: safePositiveRationalLiteral @num @den e
+makeSafeRationalLiteral :: String -> HsExpr GhcPs -> Integer -> Integer -> HsExpr GhcPs
+makeSafeRationalLiteral funcName expr num den = fullApp
+ where
+  funcRdrName = mkRdrUnqual (mkVarOcc funcName)
+  funcVar = noLocA (HsVar noExtField (noLocA funcRdrName))
+  numTyLit = HsNumTy NoSourceText (abs num)
+  denTyLit = HsNumTy NoSourceText (abs den)
+#if MIN_VERSION_ghc(9,10,0)
+  numTypeArg = HsWC noExtField (noLocA (HsTyLit noExtField numTyLit))
+  denTypeArg = HsWC noExtField (noLocA (HsTyLit noExtField denTyLit))
+  withNumTypeApp = HsAppType noAnn funcVar numTypeArg
+  withBothTypeApps = HsAppType noAnn (noLocA withNumTypeApp) denTypeArg
+  fullApp = HsApp noExtField (noLocA withBothTypeApps) (noLocA expr)
+#else
+  numTypeArg = HsWC noExtField (noLocA (HsTyLit noExtField numTyLit))
+  denTypeArg = HsWC noExtField (noLocA (HsTyLit noExtField denTyLit))
+  atToken = L NoTokenLoc (HsTok @"@")
+  withNumTypeApp = HsAppType noExtField funcVar atToken numTypeArg
+  withBothTypeApps = HsAppType noExtField (noLocA withNumTypeApp) atToken denTypeArg
+  fullApp = HsApp noAnn (noLocA withBothTypeApps) (noLocA expr)
 #endif
