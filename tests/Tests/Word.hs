@@ -1,7 +1,10 @@
+{-# LANGUAGE QuasiQuotes #-}
+
 module Tests.Word (tests) where
 
 import Prelude
 
+import Data.String.Interpolate (__i)
 import Data.Word
 import Test.Tasty (TestTree, testGroup, askOption)
 import Test.Tasty.HUnit (testCase, testCaseInfo, (@?=))
@@ -33,7 +36,12 @@ tests =
             testCaseInfo "Word8 out of bounds" $
               assertCompileError
                 debug
-                "import Prelude\nimport Data.Word\ntest :: Word8\ntest = 256"
+                [__i|
+                  import Prelude
+                  import Data.Word
+                  test :: Word8
+                  test = 256
+                |]
                 [ "Literal 256 is out of bounds"
                 , "Word8 has bounds: [0 .. 255]"
                 , "Possible fix: use 'uncheckedLiteral' from 'SafeLiterals' to bypass this check"
@@ -42,7 +50,12 @@ tests =
             testCaseInfo "Word16 out of bounds" $
               assertCompileError
                 debug
-                "import Prelude\nimport Data.Word\ntest :: Word16\ntest = 65536"
+                [__i|
+                  import Prelude
+                  import Data.Word
+                  test :: Word16
+                  test = 65536
+                |]
                 [ "Literal 65536 is out of bounds"
                 , "Word16 has bounds: [0 .. 65535]"
                 , "Possible fix: use 'uncheckedLiteral' from 'SafeLiterals' to bypass this check"
@@ -51,7 +64,12 @@ tests =
             testCaseInfo "Word32 out of bounds" $
               assertCompileError
                 debug
-                "import Prelude\nimport Data.Word\ntest :: Word32\ntest = 4294967296"
+                [__i|
+                  import Prelude
+                  import Data.Word
+                  test :: Word32
+                  test = 4294967296
+                |]
                 [ "Literal 4294967296 is out of bounds"
                 , "Word32 has bounds: [0 .. 4294967295]"
                 , "Possible fix: use 'uncheckedLiteral' from 'SafeLiterals' to bypass this check"
@@ -60,7 +78,12 @@ tests =
             testCaseInfo "Word8 negative" $
               assertCompileError
                 debug
-                "import Prelude\nimport Data.Word\ntest :: Word8\ntest = -1"
+                [__i|
+                  import Prelude
+                  import Data.Word
+                  test :: Word8
+                  test = -1
+                |]
                 [ "Negative literal -1 is out of bounds"
                 , "Word8 has bounds: [0 .. 255]"
                 , "Possible fix: use 'uncheckedLiteral' from 'SafeLiterals' to bypass this check"
@@ -69,7 +92,12 @@ tests =
             testCaseInfo "Word16 negative" $
               assertCompileError
                 debug
-                "import Prelude\nimport Data.Word\ntest :: Word16\ntest = -100"
+                [__i|
+                  import Prelude
+                  import Data.Word
+                  test :: Word16
+                  test = -100
+                |]
                 [ "Negative literal -100 is out of bounds"
                 , "Word16 has bounds: [0 .. 65535]"
                 , "Possible fix: use 'uncheckedLiteral' from 'SafeLiterals' to bypass this check"
@@ -78,7 +106,11 @@ tests =
             testCaseInfo "Word negative" $
               assertCompileError
                 debug
-                "import Prelude\ntest :: Word\ntest = -42"
+                [__i|
+                  import Prelude
+                  test :: Word
+                  test = -42
+                |]
                 [ "Negative literal -42 is out of bounds"
                 , "Word has bounds: [0 .."
                 , "Possible fix: use 'uncheckedLiteral' from 'SafeLiterals' to bypass this check"

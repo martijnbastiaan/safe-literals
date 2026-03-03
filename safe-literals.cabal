@@ -70,7 +70,7 @@ test-suite unittests
     base,
     directory,
     filepath,
-    interpolate,
+    string-interpolate,
     process,
     safe-literals,
     tasty >=0.10,
