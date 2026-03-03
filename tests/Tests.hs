@@ -2,8 +2,8 @@ module Tests (tests) where
 
 import Test.Tasty (TestTree, testGroup)
 
-import qualified Tests.Unsigned as Unsigned
-import qualified Tests.Word as Word
+import Tests.Unsigned qualified as Unsigned
+import Tests.Word qualified as Word
 
 tests :: TestTree
 tests =

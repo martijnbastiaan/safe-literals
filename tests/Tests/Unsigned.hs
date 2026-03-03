@@ -11,11 +11,11 @@ module Tests.Unsigned (tests) where
 import Prelude
 
 import Data.String.Interpolate (__i)
-import GHC.TypeLits (type (<=?), type (<=), type (^), type (-), Nat, KnownNat, natVal)
 import GHC.TypeError (Assert)
+import GHC.TypeLits (KnownNat, Nat, natVal, type (-), type (<=), type (<=?), type (^))
 import GHC.TypeLits.Extra (CLogWZ)
 import Numeric.Natural (Natural)
-import Test.Tasty (TestTree, testGroup, askOption)
+import Test.Tasty (TestTree, askOption, testGroup)
 import Test.Tasty.HUnit (testCase, testCaseInfo, (@?=))
 import Test.Tasty.ShouldError (DebugGhc (..), assertCompileError)
 
@@ -26,7 +26,7 @@ data Unsigned (n :: Nat) = Unsigned Natural
 instance Show (Unsigned n) where
   show (Unsigned x) = show x
 
-instance KnownNat n => Num (Unsigned n) where
+instance (KnownNat n) => Num (Unsigned n) where
   fromInteger x = Unsigned (fromInteger x `mod` (2 ^ natVal (undefined :: Unsigned n)))
   Unsigned a + Unsigned b = fromInteger (toInteger (a + b))
   Unsigned a * Unsigned b = fromInteger (toInteger (a * b))
@@ -38,15 +38,15 @@ instance KnownNat n => Num (Unsigned n) where
 
 -- | Instance for safe positive integer literals on Unsigned types
 instance
-  ( Assert (CLogWZ 2 lit 0 <=? n)
+  ( Assert
+      (CLogWZ 2 lit 0 <=? n)
       (PositiveUnsignedError lit (Unsigned n) ((2 ^ n) - 1))
   ) =>
-   SafePositiveIntegerLiteral lit (Unsigned n)
+  SafePositiveIntegerLiteral lit (Unsigned n)
 
 -- | Instance for safe negative integer literals on Unsigned types (always errors)
 instance
-  ( NegativeUnsignedError lit (Unsigned n) ((2 ^ n) - 1)
-  ) =>
+  (NegativeUnsignedError lit (Unsigned n) ((2 ^ n) - 1)) =>
   SafeNegativeIntegerLiteral lit (Unsigned n)
 
 tests :: TestTree

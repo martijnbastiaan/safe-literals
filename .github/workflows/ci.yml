@@ -4,6 +4,24 @@ on:
   push:
 
 jobs:
+  format-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Nix
+        uses: cachix/install-nix-action@v27
+
+      - name: Run format check
+        run: nix develop --command ./format.sh
+
+      - name: Check for formatting changes
+        run: |
+          if ! git diff --exit-code; then
+            echo "Formatting changes detected. Please run ./format.sh locally."
+            exit 1
+          fi
+
   generate-matrix:
     runs-on: ubuntu-latest
     outputs:

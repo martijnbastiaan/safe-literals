@@ -1,9 +1,9 @@
 module Main where
 
 import Data.Proxy
-import Prelude
 import Test.Tasty
 import Test.Tasty.Options
+import Prelude
 
 import Test.Tasty.ShouldError (DebugGhc (..))
 

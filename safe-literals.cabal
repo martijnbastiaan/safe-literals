@@ -19,9 +19,12 @@ common typechecker-plugins
     ghc-typelits-natnormalise,
 
   ghc-options:
-    -fplugin GHC.TypeLits.KnownNat.Solver
-    -fplugin GHC.TypeLits.Normalise
-    -fplugin GHC.TypeLits.Extra.Solver
+    -fplugin
+    GHC.TypeLits.KnownNat.Solver
+    -fplugin
+    GHC.TypeLits.Normalise
+    -fplugin
+    GHC.TypeLits.Extra.Solver
 
 common sane-records
   default-extensions:
@@ -57,10 +60,10 @@ test-suite unittests
   type: exitcode-stdio-1.0
   main-is: Main.hs
   other-modules:
-    Tests
-    Tests.Word
-    Tests.Unsigned
     Test.Tasty.ShouldError
+    Tests
+    Tests.Unsigned
+    Tests.Word
 
   default-extensions:
     DataKinds
@@ -70,13 +73,15 @@ test-suite unittests
     base,
     directory,
     filepath,
-    string-interpolate,
     process,
     safe-literals,
+    string-interpolate,
     tasty >=0.10,
     tasty-hunit >=0.9,
     temporary,
 
   hs-source-dirs: tests
   default-language: GHC2021
-  ghc-options: -fplugin=SafeLiterals -Wno-overflowed-literals
+  ghc-options:
+    -fplugin=SafeLiterals
+    -Wno-overflowed-literals

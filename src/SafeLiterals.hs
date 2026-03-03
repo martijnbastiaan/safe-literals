@@ -1,8 +1,8 @@
-module SafeLiterals
-  ( plugin
-  , uncheckedLiteral
-  , module SafeLiterals.Class
-  ) where
+module SafeLiterals (
+  plugin,
+  uncheckedLiteral,
+  module SafeLiterals.Class,
+) where
 
 import SafeLiterals.Class
 import SafeLiterals.Plugin (plugin)

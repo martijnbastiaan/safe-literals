@@ -6,7 +6,7 @@ import Prelude
 
 import Data.String.Interpolate (__i)
 import Data.Word
-import Test.Tasty (TestTree, testGroup, askOption)
+import Test.Tasty (TestTree, askOption, testGroup)
 import Test.Tasty.HUnit (testCase, testCaseInfo, (@?=))
 import Test.Tasty.ShouldError (DebugGhc (..), assertCompileError)
 

@@ -3,13 +3,13 @@
 
 module SafeLiterals.Plugin (plugin) where
 
-import Prelude
 import GHC.Hs
+import Prelude
 
-import Control.Monad.State (State, runState, put)
+import Control.Monad.State (State, put, runState)
 import Data.Generics (Data, extM, gmapM)
 import GHC.Plugins hiding ((<>))
-import GHC.Types.SourceText (il_value, SourceText (NoSourceText))
+import GHC.Types.SourceText (SourceText (NoSourceText), il_value)
 
 -- | Type alias for transformation state: tracks whether any changes occurred
 type TransformM = State Bool
@@ -53,7 +53,7 @@ transformParsedModule hpm = do
 transformHsModule :: HsModule GhcPs -> TransformM (HsModule GhcPs)
 transformHsModule hsmod = gmapM transformData hsmod
 
-transformData :: Data a => a -> TransformM a
+transformData :: (Data a) => a -> TransformM a
 transformData = gmapM transformData `extM` transformLHsExpr
 
 {- | Create an import declaration for SafeLiterals. Uses a real (but empty) SrcSpan so GHC
@@ -67,14 +67,12 @@ mkInsertsImport = L ann $ simpleImportDecl moduleName
   ann = noAnnSrcSpan srcSpan
   moduleName = mkModuleName "SafeLiterals"
 
-{- | Transform a located expression using top-down traversal.
--}
+-- | Transform a located expression using top-down traversal.
 transformLHsExpr :: LHsExpr GhcPs -> TransformM (LHsExpr GhcPs)
 transformLHsExpr lexpr@(L loc expr) = case expr of
   -- Check if this is an application to our safe literal functions. If so, stop recursing
   -- to avoid double transformation.
   HsApp _ fun _ | isSafeLiteralApp (unLoc fun) -> return lexpr
-
   -- Handle negation: detect (negate literal) patterns
   NegApp _ (L _ (HsOverLit _ OverLit{ol_val = HsIntegral intLit})) _ -> do
     put True -- Mark that we performed a change
@@ -94,6 +92,7 @@ transformLHsExpr lexpr@(L loc expr) = case expr of
   -- For all other expressions, recurse into children (top-down)
   _ -> L loc <$> gmapM transformData expr
 
+{- FOURMOLU_DISABLE -}
 -- | Check if an expression is an application to one of our safe literal functions
 isSafeLiteralApp :: HsExpr GhcPs -> Bool
 isSafeLiteralApp expr = case expr of
@@ -106,6 +105,7 @@ isSafeLiteralApp expr = case expr of
   HsAppType _ funExpr _ _ -> isSafeLiteralApp (unLoc funExpr)
 #endif
   _ -> False
+{- FOURMOLU_ENABLE -}
 
 -- | Check if a name is one of our safe literal functions or uncheckedLiteral
 isSafeLiteralName :: RdrName -> Bool
@@ -117,8 +117,7 @@ isSafeLiteralName rdrName =
         || name == "uncheckedLiteral"
     _ -> False
 
-{- | Build the expression, e.g.: safePositiveIntegerLiteral @N e
--}
+-- | Build the expression, e.g.: safePositiveIntegerLiteral @N e
 makeSafeLiteral :: String -> HsExpr GhcPs -> Integer -> HsExpr GhcPs
 makeSafeLiteral funcName expr value = fullApp
  where
