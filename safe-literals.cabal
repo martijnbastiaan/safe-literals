@@ -19,12 +19,9 @@ common typechecker-plugins
     ghc-typelits-natnormalise,
 
   ghc-options:
-    -fplugin
-    GHC.TypeLits.KnownNat.Solver
-    -fplugin
-    GHC.TypeLits.Normalise
-    -fplugin
-    GHC.TypeLits.Extra.Solver
+    -fplugin=GHC.TypeLits.KnownNat.Solver
+    -fplugin=GHC.TypeLits.Normalise
+    -fplugin=GHC.TypeLits.Extra.Solver
 
 common sane-records
   default-extensions:
