@@ -40,6 +40,8 @@ library
 - [ ] Test in larger ecosystems (bittide?)
 - [ ] Release on Hackage
 - [ ] Implement in `clash-prelude`
+- [ ] Rename to `checked-literals`?
+- [ ] Investigate use of "if instance exist" hackery to get better error messages in completely polymorphic settings? (Low priority, IMO.)
 
 # How it works
 
