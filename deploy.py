@@ -6,6 +6,7 @@ remote release branch/tag for the current package version.
 
 It then performs preflight git checks and runs:
 
+* ``cabal check``
 * ``cabal build all``
 * ``cabal run unittests -- --hide-successes``
 * ``cabal sdist``
@@ -324,6 +325,7 @@ def dry_run(package: str, version: str, hackage_token: str | None) -> int:
     docs_tarball = docs_tarball_path(artifacts_dir, package, version)
 
     step("Planned side-effecting commands")
+    print_command(["cabal", "check"])
     print_command(["cabal", "build", "all", "-w", compiler_name])
     print_command(
         ["cabal", "run", "unittests", "-w", compiler_name, "--", "--hide-successes"]
@@ -374,6 +376,9 @@ def release(package: str, version: str, hackage_token: str | None) -> int:
     log(f"Artifacts: {artifacts_dir}")
 
     try:
+        step("Running cabal check")
+        run(["cabal", "check"], env=env)
+
         step("Building")
         run(["cabal", "build", "all", "-w", compiler_name], env=env)
 
