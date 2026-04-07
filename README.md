@@ -39,7 +39,6 @@ library
 
 # TODO
 - [ ] Test in larger ecosystems (bittide?)
-- [ ] Release on Hackage
 - [ ] Implement in `clash-prelude`
 - [ ] Investigate use of "if instance exist" hackery to get better error messages in completely polymorphic settings? (Low priority, IMO.)
 
